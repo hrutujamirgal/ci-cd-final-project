@@ -1,6 +1,37 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
+  name: cleanup
+spec:
+  workspaces:
+    - name: source
+  steps:
+    - name: remove
+      image: alpine:3
+      env:
+        - name: WORKSPACE_SOURCE_PATH
+          value: $(workspaces.source.path)
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
+      script: |
+        #!/usr/bin/env sh
+        set -eu
+        echo "Removing all files from ${WORKSPACE_SOURCE_PATH} ..."
+        # Check if the directory exists before attempting to delete
+        if [ -d "${WORKSPACE_SOURCE_PATH}" ] ; then
+          # Remove non-hidden files and directories
+          rm -rf "${WORKSPACE_SOURCE_PATH:?}"/*
+          # Remove files and directories starting with a single dot (e.g., .config) but not ..
+          rm -rf "${WORKSPACE_SOURCE_PATH}"/.[!.]*
+          # Remove files and directories starting with two dots followed by any other character (e.g., ..config)
+          rm -rf "${WORKSPACE_SOURCE_PATH}"/..?*
+        fi
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
   name: nose
 spec:
   workspaces:
